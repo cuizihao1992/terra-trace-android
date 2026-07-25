@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#17202A</color>
+    <color name="muted">#5F6C7B</color>
+    <color name="surface">#F7F8FA</color>
+    <color name="panel">#FFFFFF</color>
+    <color name="accent">#0F7B6C</color>
+    <color name="accent_dark">#0A5C51</color>
+    <color name="line_blue">#2563EB</color>
+    <color name="point_orange">#F97316</color>
+</resources>
+

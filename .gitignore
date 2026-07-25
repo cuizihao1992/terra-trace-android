@@ -1,0 +1,17 @@
+# Gradle and Android build output
+.gradle/
+.kotlin/
+build/
+app/build/
+
+# Local IDE files
+.idea/
+*.iml
+
+# Local temporary tools and scratch files
+work/
+outputs/
+
+# Local OS files
+.DS_Store
+Thumbs.db

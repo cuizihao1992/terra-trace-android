@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TerraTrace</string>
+    <string name="home_title">TerraTrace</string>
+    <string name="home_subtitle">Android 原生版本：矢量底图、轨迹、点击弹窗，预留 WMS / WMTS / MVT 扩展。</string>
+    <string name="open_map">进入地图</string>
+    <string name="map_title">地图</string>
+    <string name="close_map">退出地图</string>
+</resources>
