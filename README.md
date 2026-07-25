@@ -2,6 +2,13 @@
 
 This is a small Android-native MapLibre app prototype for a frontend-oriented developer.
 
+## Download
+
+Install the latest debug APK from the GitHub release page:
+
+- [TerraTrace Android v0.1.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.1.0)
+- [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.1.0/terra-trace-android-debug.apk)
+
 ## App Flow
 
 - `HomeActivity`: landing page with a single entry point.
