@@ -6,8 +6,8 @@ This is a small Android-native MapLibre app prototype for a frontend-oriented de
 
 Install the latest debug APK from the GitHub release page:
 
-- [TerraTrace Android v0.1.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.1.0)
-- [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.1.0/terra-trace-android-debug.apk)
+- [TerraTrace Android v0.2.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.2.0)
+- [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.2.0/terra-trace-android-demo-v0.2.0-debug.apk)
 
 ## Modules
 
