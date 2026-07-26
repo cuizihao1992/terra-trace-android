@@ -14,4 +14,14 @@
     <string name="layer_wmts">WMTS</string>
     <string name="layer_wms">WMS</string>
     <string name="layer_mvt">MVT</string>
+    <string name="zoom_in">+</string>
+    <string name="zoom_out">-</string>
+    <string name="location">定位</string>
+    <string name="base_map">底图</string>
+    <string name="draw_point">画点</string>
+    <string name="draw_line">画线</string>
+    <string name="draw_polygon">画面</string>
+    <string name="draw_stop">停止</string>
+    <string name="draw_undo">撤销</string>
+    <string name="draw_clear">清空</string>
 </resources>

@@ -1,11 +1,17 @@
 package com.example.maplibrenativedemo
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
+import com.terratrace.map.TerraTraceDrawMode
 import com.terratrace.map.TerraTraceFeature
 import com.terratrace.map.TerraTraceLayerIds
 import com.terratrace.map.TerraTraceMapConfig
@@ -40,6 +46,7 @@ class MapActivity : Activity(), TerraTraceMapListener {
         controller.loadDemoLayers()
         statusText.setText(R.string.map_ready)
         bindLayerToggles(controller)
+        bindMapTools(controller)
     }
 
     override fun onFeatureClick(feature: TerraTraceFeature) {
@@ -58,6 +65,10 @@ class MapActivity : Activity(), TerraTraceMapListener {
 
     override fun onMapClick(lng: Double, lat: Double) {
         statusText.text = "Map click: %.5f, %.5f".format(lng, lat)
+    }
+
+    override fun onDrawChanged(mode: TerraTraceDrawMode, pointCount: Int) {
+        statusText.text = "Draw mode: ${mode.name}, points: $pointCount"
     }
 
     override fun onMapError(message: String) {
@@ -80,6 +91,86 @@ class MapActivity : Activity(), TerraTraceMapListener {
     ) {
         findViewById<CheckBox>(checkBoxId).setOnCheckedChangeListener { _, isChecked ->
             controller.setLayerVisible(layerId, isChecked)
+        }
+    }
+
+    private fun bindMapTools(controller: TerraTraceMapController) {
+        findViewById<Button>(R.id.zoomInButton).setOnClickListener {
+            controller.zoomIn()
+        }
+        findViewById<Button>(R.id.zoomOutButton).setOnClickListener {
+            controller.zoomOut()
+        }
+        findViewById<Button>(R.id.baseMapButton).setOnClickListener {
+            controller.switchBaseMap()
+            statusText.text = "Base map switched"
+        }
+        findViewById<Button>(R.id.locationButton).setOnClickListener {
+            locateUser()
+        }
+        findViewById<Button>(R.id.drawPointButton).setOnClickListener {
+            controller.setDrawMode(TerraTraceDrawMode.POINT)
+        }
+        findViewById<Button>(R.id.drawLineButton).setOnClickListener {
+            controller.setDrawMode(TerraTraceDrawMode.LINE)
+        }
+        findViewById<Button>(R.id.drawPolygonButton).setOnClickListener {
+            controller.setDrawMode(TerraTraceDrawMode.POLYGON)
+        }
+        findViewById<Button>(R.id.drawStopButton).setOnClickListener {
+            controller.setDrawMode(TerraTraceDrawMode.NONE)
+        }
+        findViewById<Button>(R.id.drawUndoButton).setOnClickListener {
+            controller.undoDrawPoint()
+        }
+        findViewById<Button>(R.id.drawClearButton).setOnClickListener {
+            controller.clearDrawing()
+        }
+    }
+
+    private fun locateUser() {
+        if (
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST
+            )
+            return
+        }
+        val location = getLastKnownLocation()
+        if (location == null) {
+            statusText.text = "No location yet. Enable location services and try again."
+        } else {
+            controller?.showUserLocation(location.longitude, location.latitude)
+            statusText.text = "Located: %.5f, %.5f".format(location.longitude, location.latitude)
+        }
+    }
+
+    private fun getLastKnownLocation(): Location? {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val providers = locationManager.getProviders(true)
+        return providers.mapNotNull { provider ->
+            runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+        }.maxByOrNull { it.time }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
+                locateUser()
+            } else {
+                statusText.text = "Location permission denied"
+            }
         }
     }
 
@@ -116,5 +207,9 @@ class MapActivity : Activity(), TerraTraceMapListener {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         terraTraceMap.onSaveInstanceState(outState)
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST = 1001
     }
 }

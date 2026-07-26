@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.FrameLayout
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -46,6 +47,11 @@ class TerraTraceMapView @JvmOverloads constructor(
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var listener: TerraTraceMapListener? = null
+    private var config: TerraTraceMapConfig = TerraTraceMapConfig()
+    private var baseMapIndex = 0
+    private var demoLayersLoaded = false
+    private var drawMode = TerraTraceDrawMode.NONE
+    private val drawPoints = mutableListOf<Point>()
 
     init {
         MapLibre.getInstance(context.applicationContext)
@@ -62,6 +68,7 @@ class TerraTraceMapView @JvmOverloads constructor(
         listener: TerraTraceMapListener? = null
     ) {
         this.listener = listener
+        this.config = config
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync { mapLibreMap ->
             map = mapLibreMap
@@ -80,9 +87,11 @@ class TerraTraceMapView @JvmOverloads constructor(
 
     override fun loadDemoLayers() {
         val currentStyle = style ?: return
+        demoLayersLoaded = true
         addDemoTrack(currentStyle)
         addDemoPoints(currentStyle)
         addDemoPolygon(currentStyle)
+        ensureDrawingLayers(currentStyle)
         addWmtsLayer(DEFAULT_WMTS_TEMPLATE)
         addWmsLayer(DEFAULT_WMS_TEMPLATE)
         addVectorTileLayer(DEFAULT_MVT_TEMPLATE, DEFAULT_MVT_SOURCE_LAYER)
@@ -112,6 +121,66 @@ class TerraTraceMapView @JvmOverloads constructor(
             .target(LatLng(lat, lng))
             .zoom(zoom)
             .build()
+    }
+
+    override fun zoomIn() {
+        map?.animateCamera(CameraUpdateFactory.zoomIn())
+    }
+
+    override fun zoomOut() {
+        map?.animateCamera(CameraUpdateFactory.zoomOut())
+    }
+
+    override fun switchBaseMap() {
+        val mapLibreMap = map ?: return
+        baseMapIndex = (baseMapIndex + 1) % BASE_STYLES.size
+        mapLibreMap.setStyle(Style.Builder().fromUri(BASE_STYLES[baseMapIndex])) { loadedStyle ->
+            style = loadedStyle
+            if (demoLayersLoaded) {
+                loadDemoLayers()
+            }
+        }
+    }
+
+    override fun showUserLocation(lng: Double, lat: Double, zoom: Double) {
+        val currentStyle = style ?: return
+        val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat)).apply {
+            addStringProperty("title", "User location")
+            addStringProperty("description", "Location supplied by host app.")
+            addStringProperty("layer", TerraTraceLayerIds.USER_LOCATION)
+        }
+        val source = currentStyle.getSourceAs<GeoJsonSource>(LOCATION_SOURCE_ID)
+        if (source == null) {
+            currentStyle.addSource(GeoJsonSource(LOCATION_SOURCE_ID, FeatureCollection.fromFeature(feature)))
+            currentStyle.addLayer(
+                CircleLayer(TerraTraceLayerIds.USER_LOCATION, LOCATION_SOURCE_ID).withProperties(
+                    circleRadius(10f),
+                    circleColor("#10B981"),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(3f)
+                )
+            )
+        } else {
+            source.setGeoJson(FeatureCollection.fromFeature(feature))
+        }
+        moveCamera(lng, lat, zoom)
+    }
+
+    override fun setDrawMode(mode: TerraTraceDrawMode) {
+        drawMode = mode
+        listener?.onDrawChanged(drawMode, drawPoints.size)
+    }
+
+    override fun undoDrawPoint() {
+        if (drawPoints.isNotEmpty()) {
+            drawPoints.removeAt(drawPoints.lastIndex)
+            updateDrawing()
+        }
+    }
+
+    override fun clearDrawing() {
+        drawPoints.clear()
+        updateDrawing()
     }
 
     override fun addWmsLayer(tileTemplate: String) {
@@ -231,6 +300,12 @@ class TerraTraceMapView @JvmOverloads constructor(
 
     private fun wireClicks(mapLibreMap: MapLibreMap) {
         mapLibreMap.addOnMapClickListener { latLng ->
+            if (drawMode != TerraTraceDrawMode.NONE) {
+                drawPoints.add(Point.fromLngLat(latLng.longitude, latLng.latitude))
+                updateDrawing()
+                return@addOnMapClickListener true
+            }
+
             val screenPoint = mapLibreMap.projection.toScreenLocation(latLng)
             val features = mapLibreMap.queryRenderedFeatures(
                 screenPoint,
@@ -264,6 +339,74 @@ class TerraTraceMapView @JvmOverloads constructor(
         }
     }
 
+    private fun ensureDrawingLayers(currentStyle: Style) {
+        if (currentStyle.getSource(DRAW_POINT_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(DRAW_POINT_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayer(
+                CircleLayer(TerraTraceLayerIds.DRAW_POINTS, DRAW_POINT_SOURCE_ID).withProperties(
+                    circleRadius(6f),
+                    circleColor("#111827"),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(2f)
+                )
+            )
+        }
+        if (currentStyle.getSource(DRAW_LINE_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(DRAW_LINE_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayer(
+                LineLayer(TerraTraceLayerIds.DRAW_LINE, DRAW_LINE_SOURCE_ID).withProperties(
+                    lineColor("#111827"),
+                    lineWidth(3f),
+                    lineCap(Property.LINE_CAP_ROUND),
+                    lineJoin(Property.LINE_JOIN_ROUND)
+                )
+            )
+        }
+        if (currentStyle.getSource(DRAW_POLYGON_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(DRAW_POLYGON_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayerBelow(
+                FillLayer(TerraTraceLayerIds.DRAW_POLYGON, DRAW_POLYGON_SOURCE_ID).withProperties(
+                    fillColor("#F59E0B"),
+                    fillOpacity(0.28f)
+                ),
+                TerraTraceLayerIds.DRAW_LINE
+            )
+        }
+    }
+
+    private fun updateDrawing() {
+        val currentStyle = style ?: return
+        ensureDrawingLayers(currentStyle)
+        val pointFeatures = drawPoints.mapIndexed { index, point ->
+            Feature.fromGeometry(point).apply {
+                addStringProperty("title", "Draw point ${index + 1}")
+                addStringProperty("description", "Vector drawing point.")
+                addStringProperty("layer", TerraTraceLayerIds.DRAW_POINTS)
+            }
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(DRAW_POINT_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(pointFeatures))
+
+        val lineFeatures = if (drawPoints.size >= 2) {
+            listOf(Feature.fromGeometry(LineString.fromLngLats(drawPoints)))
+        } else {
+            emptyList()
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(DRAW_LINE_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(lineFeatures))
+
+        val polygonFeatures = if (drawPoints.size >= 3) {
+            val closed = drawPoints.toMutableList()
+            closed.add(drawPoints.first())
+            listOf(Feature.fromGeometry(Polygon.fromLngLats(listOf(closed))))
+        } else {
+            emptyList()
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(DRAW_POLYGON_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(polygonFeatures))
+        listener?.onDrawChanged(drawMode, drawPoints.size)
+    }
+
     private fun pointFeature(lng: Double, lat: Double, title: String, description: String): Feature {
         return Feature.fromGeometry(Point.fromLngLat(lng, lat)).apply {
             addStringProperty("title", title)
@@ -287,6 +430,16 @@ class TerraTraceMapView @JvmOverloads constructor(
         private const val WMS_SOURCE_ID = "terra-wms-source"
         private const val WMTS_SOURCE_ID = "terra-wmts-source"
         private const val MVT_SOURCE_ID = "terra-mvt-source"
+        private const val LOCATION_SOURCE_ID = "terra-user-location-source"
+        private const val DRAW_POINT_SOURCE_ID = "terra-draw-points-source"
+        private const val DRAW_LINE_SOURCE_ID = "terra-draw-line-source"
+        private const val DRAW_POLYGON_SOURCE_ID = "terra-draw-polygon-source"
+
+        private val BASE_STYLES = listOf(
+            "https://demotiles.maplibre.org/style.json",
+            "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        )
 
         private const val DEFAULT_WMTS_TEMPLATE =
             "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg"

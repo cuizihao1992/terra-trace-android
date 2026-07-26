@@ -27,9 +27,19 @@ Install the latest debug APK from the GitHub release page:
 - GeoJSON polygon rendered as a fill layer.
 - Feature click callback and native popup.
 - Layer toggles for track, points, polygon, WMS, WMTS, and MVT.
+- Location button using the host app's Android location permission flow.
+- Zoom in/out buttons.
+- Basemap switching across multiple MapLibre style URLs.
+- Vector drawing toolbar for point, line, and polygon sketching.
 - WMTS/XYZ raster tile layer extension.
 - WMS raster tile layer extension.
 - MVT vector tile source extension.
+
+## 3D Support
+
+TerraTrace currently targets 2D and 2.5D map workflows. MapLibre can support camera pitch, rotation, and style-driven 3D-like layers such as fill extrusion when the source data has height attributes.
+
+For true 3D scenes such as globe rendering, terrain-heavy visualization, BIM, oblique photography, or 3D Tiles, use a dedicated 3D module based on Cesium, Unity, or Unreal beside this 2D map SDK.
 
 ## Android SDK Usage
 
