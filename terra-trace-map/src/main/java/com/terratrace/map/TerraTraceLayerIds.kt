@@ -12,4 +12,5 @@ object TerraTraceLayerIds {
     const val DRAW_POINTS = "terra-draw-points-layer"
     const val DRAW_LINE = "terra-draw-line-layer"
     const val DRAW_POLYGON = "terra-draw-polygon-layer"
+    const val PLAYBACK_POINT = "terra-playback-point-layer"
 }

@@ -18,6 +18,7 @@ import com.terratrace.map.TerraTraceMapConfig
 import com.terratrace.map.TerraTraceMapController
 import com.terratrace.map.TerraTraceMapListener
 import com.terratrace.map.TerraTraceMapView
+import com.terratrace.map.TerraTraceMeasureMode
 
 class MapActivity : Activity(), TerraTraceMapListener {
     private lateinit var terraTraceMap: TerraTraceMapView
@@ -69,6 +70,14 @@ class MapActivity : Activity(), TerraTraceMapListener {
 
     override fun onDrawChanged(mode: TerraTraceDrawMode, pointCount: Int) {
         statusText.text = "Draw mode: ${mode.name}, points: $pointCount"
+    }
+
+    override fun onMeasureChanged(summary: String) {
+        statusText.text = summary
+    }
+
+    override fun onPlaybackChanged(progress: Int, total: Int) {
+        statusText.text = "Track playback: $progress / $total"
     }
 
     override fun onMapError(message: String) {
@@ -125,6 +134,32 @@ class MapActivity : Activity(), TerraTraceMapListener {
         }
         findViewById<Button>(R.id.drawClearButton).setOnClickListener {
             controller.clearDrawing()
+        }
+        findViewById<Button>(R.id.measureDistanceButton).setOnClickListener {
+            controller.setMeasureMode(TerraTraceMeasureMode.DISTANCE)
+        }
+        findViewById<Button>(R.id.measureAreaButton).setOnClickListener {
+            controller.setMeasureMode(TerraTraceMeasureMode.AREA)
+        }
+        findViewById<Button>(R.id.measureClearButton).setOnClickListener {
+            controller.clearMeasure()
+            controller.setMeasureMode(TerraTraceMeasureMode.NONE)
+        }
+        findViewById<Button>(R.id.exportGeoJsonButton).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Drawing GeoJSON")
+                .setMessage(controller.exportDrawingGeoJson())
+                .setPositiveButton("Close", null)
+                .show()
+        }
+        findViewById<Button>(R.id.playTrackButton).setOnClickListener {
+            controller.startTrackPlayback()
+        }
+        findViewById<Button>(R.id.pauseTrackButton).setOnClickListener {
+            controller.pauseTrackPlayback()
+        }
+        findViewById<Button>(R.id.resetTrackButton).setOnClickListener {
+            controller.resetTrackPlayback()
         }
     }
 

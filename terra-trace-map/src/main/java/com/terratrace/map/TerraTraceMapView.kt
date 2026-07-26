@@ -1,9 +1,11 @@
 package com.terratrace.map
 
 import android.content.Context
+import android.location.Location
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
-import android.view.View
 import android.widget.FrameLayout
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -52,6 +54,18 @@ class TerraTraceMapView @JvmOverloads constructor(
     private var demoLayersLoaded = false
     private var drawMode = TerraTraceDrawMode.NONE
     private val drawPoints = mutableListOf<Point>()
+    private var measureMode = TerraTraceMeasureMode.NONE
+    private val measurePoints = mutableListOf<Point>()
+    private val playbackHandler = Handler(Looper.getMainLooper())
+    private var playbackIndex = 0
+    private var playbackRunning = false
+    private val sampleTrackPoints = listOf(
+        Point.fromLngLat(121.3930, 31.2075),
+        Point.fromLngLat(121.4300, 31.2200),
+        Point.fromLngLat(121.4737, 31.2304),
+        Point.fromLngLat(121.5150, 31.2450),
+        Point.fromLngLat(121.5520, 31.2220)
+    )
 
     init {
         MapLibre.getInstance(context.applicationContext)
@@ -92,6 +106,8 @@ class TerraTraceMapView @JvmOverloads constructor(
         addDemoPoints(currentStyle)
         addDemoPolygon(currentStyle)
         ensureDrawingLayers(currentStyle)
+        ensureMeasureLayers(currentStyle)
+        ensurePlaybackLayer(currentStyle)
         addWmtsLayer(DEFAULT_WMTS_TEMPLATE)
         addWmsLayer(DEFAULT_WMS_TEMPLATE)
         addVectorTileLayer(DEFAULT_MVT_TEMPLATE, DEFAULT_MVT_SOURCE_LAYER)
@@ -183,6 +199,63 @@ class TerraTraceMapView @JvmOverloads constructor(
         updateDrawing()
     }
 
+    override fun exportDrawingGeoJson(): String {
+        val features = mutableListOf<Feature>()
+        drawPoints.forEachIndexed { index, point ->
+            features.add(
+                Feature.fromGeometry(point).apply {
+                    addStringProperty("title", "Draw point ${index + 1}")
+                }
+            )
+        }
+        if (drawPoints.size >= 2) {
+            features.add(
+                Feature.fromGeometry(LineString.fromLngLats(drawPoints)).apply {
+                    addStringProperty("title", "Draw line")
+                }
+            )
+        }
+        if (drawPoints.size >= 3) {
+            val closed = drawPoints.toMutableList()
+            closed.add(drawPoints.first())
+            features.add(
+                Feature.fromGeometry(Polygon.fromLngLats(listOf(closed))).apply {
+                    addStringProperty("title", "Draw polygon")
+                }
+            )
+        }
+        return FeatureCollection.fromFeatures(features).toJson()
+    }
+
+    override fun setMeasureMode(mode: TerraTraceMeasureMode) {
+        measureMode = mode
+        drawMode = TerraTraceDrawMode.NONE
+        listener?.onMeasureChanged(measureSummary())
+    }
+
+    override fun clearMeasure() {
+        measurePoints.clear()
+        updateMeasure()
+    }
+
+    override fun startTrackPlayback() {
+        playbackRunning = true
+        ensurePlaybackLayer(style ?: return)
+        playbackHandler.removeCallbacksAndMessages(null)
+        playbackHandler.post(playbackTick)
+    }
+
+    override fun pauseTrackPlayback() {
+        playbackRunning = false
+        playbackHandler.removeCallbacksAndMessages(null)
+    }
+
+    override fun resetTrackPlayback() {
+        pauseTrackPlayback()
+        playbackIndex = 0
+        updatePlaybackPoint()
+    }
+
     override fun addWmsLayer(tileTemplate: String) {
         val currentStyle = style ?: return
         if (currentStyle.getLayer(TerraTraceLayerIds.WMS_RASTER) != null) return
@@ -227,11 +300,11 @@ class TerraTraceMapView @JvmOverloads constructor(
         val track = Feature.fromGeometry(
             LineString.fromLngLats(
                 listOf(
-                    Point.fromLngLat(121.3930, 31.2075),
-                    Point.fromLngLat(121.4300, 31.2200),
-                    Point.fromLngLat(121.4737, 31.2304),
-                    Point.fromLngLat(121.5150, 31.2450),
-                    Point.fromLngLat(121.5520, 31.2220)
+                    sampleTrackPoints[0],
+                    sampleTrackPoints[1],
+                    sampleTrackPoints[2],
+                    sampleTrackPoints[3],
+                    sampleTrackPoints[4]
                 )
             )
         )
@@ -305,6 +378,11 @@ class TerraTraceMapView @JvmOverloads constructor(
                 updateDrawing()
                 return@addOnMapClickListener true
             }
+            if (measureMode != TerraTraceMeasureMode.NONE) {
+                measurePoints.add(Point.fromLngLat(latLng.longitude, latLng.latitude))
+                updateMeasure()
+                return@addOnMapClickListener true
+            }
 
             val screenPoint = mapLibreMap.projection.toScreenLocation(latLng)
             val features = mapLibreMap.queryRenderedFeatures(
@@ -374,6 +452,55 @@ class TerraTraceMapView @JvmOverloads constructor(
         }
     }
 
+    private fun ensureMeasureLayers(currentStyle: Style) {
+        if (currentStyle.getSource(MEASURE_POINT_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(MEASURE_POINT_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayer(
+                CircleLayer(MEASURE_POINT_LAYER_ID, MEASURE_POINT_SOURCE_ID).withProperties(
+                    circleRadius(6f),
+                    circleColor("#DC2626"),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(2f)
+                )
+            )
+        }
+        if (currentStyle.getSource(MEASURE_LINE_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(MEASURE_LINE_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayer(
+                LineLayer(MEASURE_LINE_LAYER_ID, MEASURE_LINE_SOURCE_ID).withProperties(
+                    lineColor("#DC2626"),
+                    lineWidth(3f),
+                    lineCap(Property.LINE_CAP_ROUND),
+                    lineJoin(Property.LINE_JOIN_ROUND)
+                )
+            )
+        }
+        if (currentStyle.getSource(MEASURE_POLYGON_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(MEASURE_POLYGON_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayerBelow(
+                FillLayer(MEASURE_POLYGON_LAYER_ID, MEASURE_POLYGON_SOURCE_ID).withProperties(
+                    fillColor("#DC2626"),
+                    fillOpacity(0.16f)
+                ),
+                MEASURE_LINE_LAYER_ID
+            )
+        }
+    }
+
+    private fun ensurePlaybackLayer(currentStyle: Style) {
+        if (currentStyle.getSource(PLAYBACK_SOURCE_ID) == null) {
+            currentStyle.addSource(GeoJsonSource(PLAYBACK_SOURCE_ID, FeatureCollection.fromFeatures(arrayOf())))
+            currentStyle.addLayer(
+                CircleLayer(TerraTraceLayerIds.PLAYBACK_POINT, PLAYBACK_SOURCE_ID).withProperties(
+                    circleRadius(9f),
+                    circleColor("#8B5CF6"),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(3f)
+                )
+            )
+        }
+    }
+
     private fun updateDrawing() {
         val currentStyle = style ?: return
         ensureDrawingLayers(currentStyle)
@@ -407,6 +534,115 @@ class TerraTraceMapView @JvmOverloads constructor(
         listener?.onDrawChanged(drawMode, drawPoints.size)
     }
 
+    private fun updateMeasure() {
+        val currentStyle = style ?: return
+        ensureMeasureLayers(currentStyle)
+        currentStyle.getSourceAs<GeoJsonSource>(MEASURE_POINT_SOURCE_ID)
+            ?.setGeoJson(
+                FeatureCollection.fromFeatures(
+                    measurePoints.mapIndexed { index, point ->
+                        Feature.fromGeometry(point).apply {
+                            addStringProperty("title", "Measure point ${index + 1}")
+                        }
+                    }
+                )
+            )
+
+        val lineFeatures = if (measurePoints.size >= 2) {
+            listOf(Feature.fromGeometry(LineString.fromLngLats(measurePoints)))
+        } else {
+            emptyList()
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(MEASURE_LINE_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(lineFeatures))
+
+        val polygonFeatures = if (measureMode == TerraTraceMeasureMode.AREA && measurePoints.size >= 3) {
+            val closed = measurePoints.toMutableList()
+            closed.add(measurePoints.first())
+            listOf(Feature.fromGeometry(Polygon.fromLngLats(listOf(closed))))
+        } else {
+            emptyList()
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(MEASURE_POLYGON_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(polygonFeatures))
+        listener?.onMeasureChanged(measureSummary())
+    }
+
+    private fun measureSummary(): String {
+        return when (measureMode) {
+            TerraTraceMeasureMode.NONE -> "Measure off"
+            TerraTraceMeasureMode.DISTANCE -> "Distance: ${formatDistance(measureDistanceMeters())}, points: ${measurePoints.size}"
+            TerraTraceMeasureMode.AREA -> "Area: ${formatArea(measureAreaSquareMeters())}, distance: ${formatDistance(measureDistanceMeters())}"
+        }
+    }
+
+    private fun measureDistanceMeters(): Double {
+        if (measurePoints.size < 2) return 0.0
+        return measurePoints.zipWithNext().sumOf { (a, b) ->
+            val results = FloatArray(1)
+            Location.distanceBetween(a.latitude(), a.longitude(), b.latitude(), b.longitude(), results)
+            results[0].toDouble()
+        }
+    }
+
+    private fun measureAreaSquareMeters(): Double {
+        if (measurePoints.size < 3) return 0.0
+        val originLat = measurePoints.map { it.latitude() }.average()
+        val metersPerDegreeLat = 111_320.0
+        val metersPerDegreeLng = 111_320.0 * kotlin.math.cos(Math.toRadians(originLat))
+        val projected = measurePoints.map {
+            Pair(it.longitude() * metersPerDegreeLng, it.latitude() * metersPerDegreeLat)
+        }
+        var sum = 0.0
+        projected.forEachIndexed { index, current ->
+            val next = projected[(index + 1) % projected.size]
+            sum += current.first * next.second - next.first * current.second
+        }
+        return kotlin.math.abs(sum) / 2.0
+    }
+
+    private fun formatDistance(meters: Double): String {
+        return if (meters >= 1000) {
+            "%.2f km".format(meters / 1000.0)
+        } else {
+            "%.0f m".format(meters)
+        }
+    }
+
+    private fun formatArea(squareMeters: Double): String {
+        return if (squareMeters >= 1_000_000) {
+            "%.2f km²".format(squareMeters / 1_000_000.0)
+        } else {
+            "%.0f m²".format(squareMeters)
+        }
+    }
+
+    private val playbackTick = object : Runnable {
+        override fun run() {
+            if (!playbackRunning) return
+            updatePlaybackPoint()
+            playbackIndex = (playbackIndex + 1).coerceAtMost(sampleTrackPoints.lastIndex)
+            if (playbackIndex >= sampleTrackPoints.lastIndex) {
+                playbackRunning = false
+            } else {
+                playbackHandler.postDelayed(this, 700)
+            }
+        }
+    }
+
+    private fun updatePlaybackPoint() {
+        val currentStyle = style ?: return
+        ensurePlaybackLayer(currentStyle)
+        val point = sampleTrackPoints[playbackIndex.coerceIn(0, sampleTrackPoints.lastIndex)]
+        val feature = Feature.fromGeometry(point).apply {
+            addStringProperty("title", "Playback")
+            addStringProperty("description", "Track playback marker.")
+        }
+        currentStyle.getSourceAs<GeoJsonSource>(PLAYBACK_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeature(feature))
+        listener?.onPlaybackChanged(playbackIndex + 1, sampleTrackPoints.size)
+    }
+
     private fun pointFeature(lng: Double, lat: Double, title: String, description: String): Feature {
         return Feature.fromGeometry(Point.fromLngLat(lng, lat)).apply {
             addStringProperty("title", title)
@@ -419,7 +655,10 @@ class TerraTraceMapView @JvmOverloads constructor(
     fun onResume() = mapView.onResume()
     fun onPause() = mapView.onPause()
     fun onStop() = mapView.onStop()
-    fun onDestroy() = mapView.onDestroy()
+    fun onDestroy() {
+        pauseTrackPlayback()
+        mapView.onDestroy()
+    }
     fun onLowMemory() = mapView.onLowMemory()
     fun onSaveInstanceState(outState: Bundle) = mapView.onSaveInstanceState(outState)
 
@@ -434,6 +673,13 @@ class TerraTraceMapView @JvmOverloads constructor(
         private const val DRAW_POINT_SOURCE_ID = "terra-draw-points-source"
         private const val DRAW_LINE_SOURCE_ID = "terra-draw-line-source"
         private const val DRAW_POLYGON_SOURCE_ID = "terra-draw-polygon-source"
+        private const val MEASURE_POINT_SOURCE_ID = "terra-measure-points-source"
+        private const val MEASURE_LINE_SOURCE_ID = "terra-measure-line-source"
+        private const val MEASURE_POLYGON_SOURCE_ID = "terra-measure-polygon-source"
+        private const val MEASURE_POINT_LAYER_ID = "terra-measure-points-layer"
+        private const val MEASURE_LINE_LAYER_ID = "terra-measure-line-layer"
+        private const val MEASURE_POLYGON_LAYER_ID = "terra-measure-polygon-layer"
+        private const val PLAYBACK_SOURCE_ID = "terra-playback-source"
 
         private val BASE_STYLES = listOf(
             "https://demotiles.maplibre.org/style.json",

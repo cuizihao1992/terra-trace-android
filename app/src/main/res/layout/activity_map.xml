@@ -245,6 +245,88 @@
                         android:textSize="13sp" />
                 </LinearLayout>
             </HorizontalScrollView>
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/measureDistanceButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/measure_distance"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/measureAreaButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/measure_area"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/measureClearButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/measure_clear"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/exportGeoJsonButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/export_geojson"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/playTrackButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/play_track"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/pauseTrackButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/pause_track"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/resetTrackButton"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="@string/reset_track"
+                        android:textAllCaps="false"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </HorizontalScrollView>
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

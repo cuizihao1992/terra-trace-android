@@ -6,8 +6,8 @@ This is a small Android-native MapLibre app prototype for a frontend-oriented de
 
 Install the latest debug APK from the GitHub release page:
 
-- [TerraTrace Android v0.3.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.3.0)
-- [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.3.0/terra-trace-android-demo-v0.3.0-debug.apk)
+- [TerraTrace Android v0.4.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.4.0)
+- [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.4.0/terra-trace-android-demo-v0.4.0-debug.apk)
 
 ## Modules
 
@@ -31,6 +31,9 @@ Install the latest debug APK from the GitHub release page:
 - Zoom in/out buttons.
 - Basemap switching across multiple MapLibre style URLs.
 - Vector drawing toolbar for point, line, and polygon sketching.
+- Drawing export as GeoJSON.
+- Distance and area measuring tools.
+- Track playback marker for route playback demos.
 - WMTS/XYZ raster tile layer extension.
 - WMS raster tile layer extension.
 - MVT vector tile source extension.

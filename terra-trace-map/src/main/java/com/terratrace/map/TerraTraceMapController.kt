@@ -12,6 +12,12 @@ interface TerraTraceMapController {
     fun setDrawMode(mode: TerraTraceDrawMode)
     fun undoDrawPoint()
     fun clearDrawing()
+    fun exportDrawingGeoJson(): String
+    fun setMeasureMode(mode: TerraTraceMeasureMode)
+    fun clearMeasure()
+    fun startTrackPlayback()
+    fun pauseTrackPlayback()
+    fun resetTrackPlayback()
     fun addWmsLayer(tileTemplate: String)
     fun addWmtsLayer(tileTemplate: String)
     fun addVectorTileLayer(tileTemplate: String, sourceLayer: String)
