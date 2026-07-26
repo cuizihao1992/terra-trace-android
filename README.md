@@ -9,10 +9,58 @@ Install the latest debug APK from the GitHub release page:
 - [TerraTrace Android v0.1.0](https://github.com/cuizihao1992/terra-trace-android/releases/tag/v0.1.0)
 - [Direct APK download](https://github.com/cuizihao1992/terra-trace-android/releases/download/v0.1.0/terra-trace-android-debug.apk)
 
+## Modules
+
+- `app`: sample Android app and APK demo.
+- `terra-trace-map`: reusable Android map SDK module built on MapLibre Native.
+
 ## App Flow
 
 - `HomeActivity`: landing page with a single entry point.
-- `MapActivity`: MapLibre map page with a back button, sample vector base map, sample track, clickable points, and popup dialog.
+- `MapActivity`: sample host page that embeds `TerraTraceMapView`.
+
+## Demo Capabilities
+
+- Vector basemap through MapLibre style JSON.
+- GeoJSON track rendered as a line layer.
+- GeoJSON points rendered as a circle layer.
+- GeoJSON polygon rendered as a fill layer.
+- Feature click callback and native popup.
+- Layer toggles for track, points, polygon, WMS, WMTS, and MVT.
+- WMTS/XYZ raster tile layer extension.
+- WMS raster tile layer extension.
+- MVT vector tile source extension.
+
+## Android SDK Usage
+
+For local development, include the library module:
+
+```kotlin
+dependencies {
+    implementation(project(":terra-trace-map"))
+}
+```
+
+Use the map component in XML:
+
+```xml
+<com.terratrace.map.TerraTraceMapView
+    android:id="@+id/terraTraceMap"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
+```
+
+Initialize it from Kotlin:
+
+```kotlin
+terraTraceMap.initialize(
+    savedInstanceState = savedInstanceState,
+    config = TerraTraceMapConfig(),
+    listener = this
+)
+```
+
+React Native and Flutter wrappers should sit above `terra-trace-map`, not replace it.
 
 ## Frontend Mental Model
 

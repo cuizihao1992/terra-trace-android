@@ -6,4 +6,12 @@
     <string name="open_map">进入地图</string>
     <string name="map_title">地图</string>
     <string name="close_map">退出地图</string>
+    <string name="map_loading">地图加载中...</string>
+    <string name="map_ready">Demo 已加载：矢量底图、GeoJSON 点线面、轨迹、点击弹窗、WMS、WMTS、MVT。</string>
+    <string name="layer_track">轨迹</string>
+    <string name="layer_points">点位</string>
+    <string name="layer_polygon">面</string>
+    <string name="layer_wmts">WMTS</string>
+    <string name="layer_wms">WMS</string>
+    <string name="layer_mvt">MVT</string>
 </resources>

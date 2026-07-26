@@ -1,18 +1,14 @@
 plugins {
-    id("com.android.application")
+    id("com.android.library")
     id("org.jetbrains.kotlin.android")
 }
 
 android {
-    namespace = "com.example.maplibrenativedemo"
+    namespace = "com.terratrace.map"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.maplibrenativedemo"
         minSdk = 23
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
     }
 
     compileOptions {
@@ -22,5 +18,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":terra-trace-map"))
+    api("org.maplibre.gl:android-sdk:11.8.0")
 }
+

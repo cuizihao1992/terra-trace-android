@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MapLibreNativeDemo"
+rootProject.name = "TerraTraceAndroid"
 include(":app")
-
+include(":terra-trace-map")
